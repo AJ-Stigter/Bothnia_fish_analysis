@@ -8,21 +8,118 @@ library("mgcv")
 
 # Load data
 setwd(here("Data"))
-fishdata <- read.csv("test_fish_env_merge.csv")
+fishdata <- read.csv("fish_cleaned_weight.csv")
 
 # Clean data
 fishdata_abborre <- fishdata %>%
   filter(Artbestämning == "Abborre")
 
-# 1 Make first models ----
+
+
+# 1 Make first models -----
+
+# First group by year and calculate mean
+library(lubridate)
+fishdata_abborre$Year <- year(fishdata_abborre$Date)
+
+aborre_mean <- fishdata_abborre %>%
+  group_by(Fångstområde1, Year) %>%   # Group by station and year
+  summarise(
+    mean_biomass = mean(Beräknad_vikt1, na.rm = TRUE),
+    mean_count = mean(Antal1, na.rm = TRUE),
+    #mean_temperature = mean(Mean_Temperature_ºC, na.rm = TRUE),
+    #mean_salinity = mean(Mean_Salinity_psu, na.rm = TRUE)
+  )
+
+# For general model (all stations)
+aborre_total_mean <- fishdata_abborre %>%
+  group_by(Year) %>%   # Group by year
+  summarise(
+    mean_biomass = mean(Beräknad_vikt1, na.rm = TRUE),
+    mean_count = mean(Antal1, na.rm = TRUE),
+    #mean_temperature = mean(Mean_Temperature_ºC, na.rm = TRUE),
+    #mean_salinity = mean(Mean_Salinity_psu, na.rm = TRUE)
+  )
+
+# Model total biomass over time
+model_perchbiomass_time <- gam(mean_biomass ~ s(Year, k=9, bs='tp') 
+                               # + s(mean_temperature, k=9,bs='tp') 
+                               # + s(mean_salinity, k=9, bs='tp')
+                               , data = aborre_total_mean, family = gaussian(),method = "REML")
+
+x11()
+plot(aborre_total_mean$mean_biomass ~aborre_total_mean$Year)
+x11()
+gam.check(model_perchbiomass_time)
+x11()
+plot(model_perchbiomass_time, select = 1)
+summary(model_perchbiomass_time)
+
+# Model biomass over time for Gaviksfjärden
+station_gav <- aborre_mean %>% filter(Fångstområde1 == "Gaviksfjärden") # Filter data for station Gaviksfjärden
+
+model_perchbiomass_gav <- gam(mean_biomass ~ s(Year, k=9, bs='tp') 
+                             # + s(mean_temperature, k=9,bs='tp') 
+                          # + s(mean_salinity, k=9, bs='tp')
+                         , data = station_gav, family = gaussian(),method = "REML")
+
+x11()
+plot(station_gav$mean_biomass ~station_gav$Year)
+
+gam.check(model_perchbiomass_gav)
+x11()
+plot(model_perchbiomass_gav, select = 1)
+summary(model_perchbiomass_gav)
+
+# Model total count over time
+model_perchcount_time <- gam(mean_count ~ s(Year, k=9, bs='tp') 
+                             # + s(mean_temperature, k=9,bs='tp')  
+                             # + s(mean_salinity, k=9, bs='tp')
+                             , data = aborre_total_mean, family = gaussian(),method = "REML")
+x11()
+plot(aborre_total_mean$mean_count ~aborre_total_mean$Year)
+x11()
+gam.check(model_perchcount_time)
+x11()
+plot(model_perchcount_time, select = 1)
+summary(model_perchcount_time)
+
+
+# Model total count over time
+model_perchcount_gav <- gam(mean_count ~ s(Year, k=9, bs='tp') 
+                             # + s(mean_temperature, k=9,bs='tp')  
+                             # + s(mean_salinity, k=9, bs='tp')
+                             , data = station_gav, family = gaussian(),method = "REML")
+x11()
+plot(station_gav$mean_count ~station_gav$Year)
+x11()
+gam.check(model_perchcount_gav)
+x11()
+plot(model_perchcount_gav, select = 1)
+summary(model_perchcount_gav)
+
+
+
+
+
+model2_perchweight_time <- gam(mean_biomass ~ s(Year, k=9, bs='tp') 
+                              # + s(mean_temperature, k=9,bs='tp')  
+                              # + s(mean_salinity, k=9, bs='tp')
+                              ,
+                              data = aborre_mean, family = gaussian(),method = "REML")
+x11()
+plot(model2_perchweight_time, select = 1)
+
+
+# 2 Make new models with env data ----
 model_perchcount <- gam(Antal1 ~ s(Mean_Temperature_ºC, k=9,bs='tp') + 
-                     s(Mean_Salinity_psu, k=9, bs='tp'),
-                   data = fishdata_abborre, family = poisson(),method = "REML")
+                          s(Mean_Salinity_psu, k=9, bs='tp'),
+                        data = fishdata_abborre, family = poisson(),method = "REML")
 
 
 model_perchweight <- gam(Beräknad_vikt1+0.1 ~ s(Mean_Temperature_ºC, k=9,bs='tp') + 
-                     s(Mean_Salinity_psu, k=9, bs='tp'),
-                   data = fishdata_abborre, family = gaussian(),method = "REML")
+                           s(Mean_Salinity_psu, k=9, bs='tp'),
+                         data = fishdata_abborre, family = gaussian(),method = "REML")
 
 gam.check(model_perchcount)
 gam.check(model_perchweight)
@@ -34,8 +131,7 @@ x11()
 plot(fishdata_abborre$Antal1 ~fishdata_abborre$Mean_Salinity_psu)
 
 
-
-# 2 Make a 3D plot ------
+# 3 Make a 3D plot ------
 # Load the necessary library
 # install.packages("plotly")
 library(plotly)
@@ -60,54 +156,3 @@ plot_ly(x = ~pred_grid$Mean_Salinity_psu,
   layout(scene = list(xaxis = list(title = "Mean Salinity (psu)"),
                       yaxis = list(title = "Mean Temperature (°C)"),
                       zaxis = list(title = "Predicted Perch Weight (g)")))
-
-# 3 Make new models -----
-
-# First group by year and calculate mean
-library(lubridate)
-fishdata_abborre$Year <- year(fishdata_abborre$Date)
-
-aborre_mean <- fishdata_abborre %>%
-  group_by(Year) %>%
-  summarise(
-    mean_biomass = mean(Beräknad_vikt1, na.rm = TRUE),
-    mean_count = mean(Antal1, na.rm = TRUE),
-    mean_temperature = mean(Mean_Temperature_ºC, na.rm = TRUE),
-    mean_salinity = mean(Mean_Salinity_psu, na.rm = TRUE)
-  )
-
-# Model biomass over time
-model_perchweight_time <- gam(mean_biomass ~ s(Year, k=9, bs='tp') + s(mean_temperature, k=9,bs='tp') + 
-                           s(mean_salinity, k=9, bs='tp'),
-                         data = aborre_mean, family = gaussian(),method = "REML")
-
-x11()
-plot(aborre_mean$mean_biomass ~aborre_mean$Year)
-
-gam.check(model_perchweight_time)
-x11()
-plot(model_perchweight_time, select = 1)
-summary(model_perchweight_time)
-
-# Model count over time
-model_perchcount_time <- gam(mean_count ~ s(Year, k=9, bs='tp') + s(mean_temperature, k=9,bs='tp') + 
-                                s(mean_salinity, k=9, bs='tp'),
-                              data = aborre_mean, family = gaussian(),method = "REML")
-x11()
-plot(aborre_mean$mean_count ~aborre_mean$Year)
-
-gam.check(model_perchcount_time)
-x11()
-plot(model_perchcount_time, select = 1)
-summary(model_perchcount_time)
-
-
-model2_perchweight_time <- gam(mean_biomass ~ s(Year, k=9, bs='tp') 
-                              # + s(mean_temperature, k=9,bs='tp')  
-                              # + s(mean_salinity, k=9, bs='tp')
-                              ,
-                              data = aborre_mean, family = gaussian(),method = "REML")
-x11()
-plot(model2_perchweight_time, select = 1)
-
-

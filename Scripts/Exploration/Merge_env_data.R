@@ -37,7 +37,7 @@ env_data_cleaned <- env_data_with_coords[
     env_data_with_coords$q_Salinity %in% c(1, 11), ]
 summary(env_data_cleaned)
 
-# Create dataframe with mean and sd for temp and salinity per dateY
+# Create dataframe with mean and sd for temp and salinity per date
 daily_temp_salinity <- env_data_cleaned %>%
   group_by(Date, Station) %>%  # Group by both date and station
   summarise(
@@ -58,6 +58,7 @@ daily_temp_salinity <- env_data_cleaned %>%
 setwd(here("Data"))
  write.csv(daily_temp_salinity, "daily_temp_salinity.csv", row.names = FALSE)
 
+ 
 # 2 Start over ----
 setwd(here("Data"))
 # Load fish data
@@ -76,108 +77,15 @@ fish_data$Long <- round(fish_data$Long, 4)
 daily_temp_salinity$Lat <- round(daily_temp_salinity$Lat, 4)
 daily_temp_salinity$Long <- round(daily_temp_salinity$Long, 4)
 
-########## Skip this part, doesn't work yet
-# Merge fish and env data
-merged_fish_temp_salinity <- merge(fish_data, daily_temp_salinity, 
-                     by = c("Date", "Lat", "Long"), 
-                     all = FALSE)
 
-merged_fish_temp_salinity <- merge(fish_data, daily_temp_salinity, 
-                                   by = c("Lat", "Long"), 
-                                   all = FALSE)
-# No correlation between locations -> not able to merge dataframes
-### Ask Leon ###
-fish_LatLong <- paste(str_sub(fish_weight_threshold$Lat,1,5),
-                      str_sub(fish_weight_threshold$Long,1,5),
-                      sep=" ")
-daily_LatLong <- paste(str_sub(daily_temp_salinity$Lat,1,5),
-                       str_sub(daily_temp_salinity$Long,1,5),
-                       sep=" ")
-which(fish_LatLong %in% daily_LatLong)
-
-str_sub(fish_weight_threshold$Lat,1,5)
-#############
-
-# Group by station and number of samples per station
-bwah <- fish_weight_threshold %>%
-  group_by(StationsNr1,Date)%>%
-  summarise(count=n(),
-            .groups = 'drop') %>%
-  group_by(StationsNr1) %>%
-  summarise(count=n())
-
-print(bwah[order(bwah$count,decreasing = T),],n=100)
-
-# Group by station and number of years sampled
-bwah <- fish_weight_threshold %>%
-  group_by(StationsNr1,year(Date))%>%
-  summarise(count=n(),
-            .groups = 'drop') %>%
-  group_by(StationsNr1) %>%
-  summarise(count=n())
-# Stations with most years of data: 11 (21y) and 12-16 (20y).
-
-######## Skip for now
-# Keep only 6 stations with most years of data
-stations_to_keep <- c("11", "12", "13", "14", "15", "16")   # Define stations to keep
-station_cleaned_data <- fish_weight_threshold %>% filter(StationsNr1 %in% stations_to_keep)
-#######
-
-
-# 3 Merging dataset without perfect matches ----
-# install.packages("fuzzyjon")
-library(fuzzyjoin)
-
-# Convert Date columns to Date format (if not already)
-fish_data <- fish_data %>%
-  mutate(Date = as.Date(Date))
-daily_temp_salinity <- daily_temp_salinity %>%
-  mutate(Date = as.Date(Date))
-
-# Perform fuzzy join to match by Lat, Long, and allow for a X-day date difference
-merged_data <- fish_data %>%
-  fuzzy_left_join(daily_temp_salinity, 
-                  by = c("Lat", "Long", "Date" = "Date"), 
-                  match_fun = list(`==`, 
-                                   ~ abs(.x - .y) <= 3, # Lat/Long tolerance
-                                   function(x, y) abs(difftime(x, y, units = "days")) <= 100)) %>%  # Date tolerance
-  ungroup() %>%  # Remove unnecessary grouping if present
-  filter(!is.na(Mean_Temperature_ºC))  # Keep only rows where temp data exists
-
+# 3 Make map to check locations of the stations ----
 # Plot on map
 library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
-# Convert merged_data to spatial data for plotting
-merged_data_sf <- st_as_sf(merged_data, 
-                           coords = c("Long.x", "Lat.x"),  # Longitude and Latitude for original location
-                           crs = 4326)  # Set CRS to WGS 84 (standard for geographic coordinates)
-# For fuzzy matched locations
-merged_data_sf_fuzzy <- st_as_sf(merged_data, 
-                                 coords = c("Long.y", "Lat.y"),  # Longitude and Latitude for fuzzy matched location
-                                 crs = 4326)  # Set CRS to WGS 84
 # Get base map
 sweden_map <- ne_countries(scale = "medium", country = c("Sweden", "Finland"), returnclass = "sf")
 
-x11()
-ggplot() +
-  # Plot the base map for Sweden
-  geom_sf(data = sweden_map, fill = "lightgrey", color = "black") +
-  
-  # Plot the original location points in blue
-  geom_sf(data = merged_data_sf, aes(color = "Original Location"), size = 3) +
-  
-  # Plot the fuzzy matched location points in red
-  geom_sf(data = merged_data_sf_fuzzy, aes(color = "Fuzzy Matched Location"), size = 3) +
-  
-  labs(title = "Original vs. Fuzzy Matched Locations",
-       subtitle = "Blue = Original Location, Red = Fuzzy Matched Location",
-       x = "Longitude", y = "Latitude") +
-  scale_color_manual(values = c("Original Location" = "blue", "Fuzzy Matched Location" = "red")) +
-  theme_minimal()
-
-
-# 4 Make map to check locations of the stations ----
 # Convert environmental data stations to spatial data
 env_stations_sf <- daily_temp_salinity %>%
   distinct(Station, Lat, Long) %>%  # Make sure each station appears once
@@ -185,9 +93,19 @@ env_stations_sf <- daily_temp_salinity %>%
   mutate(Source = "Environmental")
 # Convert fish data stations to spatial data
 fish_stations_sf <- fish_data %>%
-  distinct(Fångstområde1, Lat, Long) %>%  # Make sure each station appears once
-  st_as_sf(coords = c("Long", "Lat"), crs = 4326) %>%
-  mutate(Source = "Fish")
+  filter(!is.na(Lat), !is.na(Long), !is.na(Fångstområde1)) %>%
+  group_by(Fångstområde1) %>%
+  summarise(
+    Lat = mean(Lat),
+    Long = mean(Long),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Lat)) %>%  # Sort from north (high lat) to south (low lat)
+  mutate(
+    Station = as.character(row_number()),  # Now 1 is most north, 6 most south
+    Source = "Fish"
+  ) %>%
+  st_as_sf(coords = c("Long", "Lat"), crs = 4326)
 # Combine both into one dataset
 all_stations_sf <- bind_rows(env_stations_sf, fish_stations_sf)
 
@@ -202,217 +120,169 @@ ggplot() +
   scale_color_manual(values = c("Environmental" = "darkgreen", "Fish" = "blue")) +
   theme_minimal()
 
-
-# Try new merge
-merged_data5 <- fuzzy_left_join(
-  fish_data %>% filter(!is.na(Lat), !is.na(Long), !is.na(Date)),
-  daily_temp_salinity %>% filter(!is.na(Lat), !is.na(Long), !is.na(Date)),
-  by = c("Date", "Lat", "Long"),
-  match_fun = list(
-    function(x, y) abs(difftime(x, y, units = "days")) <= 21,
-    ~ abs(.x - .y) <= 0.1,
-    ~ abs(.x - .y) <= 0.1
-  )
-) %>% filter(!is.na(Mean_Temperature_ºC))
-# Multiple env data records are matched to 1 fish data point
-
-# Plot
-# Convert the fish locations (from fish_data) to sf
-fish_points <- st_as_sf(merged_data5, coords = c("Long.x", "Lat.x"), crs = 4326)
-# Convert the matched environmental locations to sf
-env_points <- st_as_sf(merged_data5, coords = c("Long.y", "Lat.y"), crs = 4326)
-# Plot both sets of points on the Sweden map
-x11()
-ggplot() +
-  geom_sf(data = sweden_map, fill = "lightgrey", color = "black") +
-  geom_sf(data = fish_points, aes(color = "Fish Station"), size = 2, alpha = 0.7) +
-  geom_sf(data = env_points, aes(color = "Matched Environment"), size = 2, alpha = 0.7) +
-  labs(
-    title = "Fish Sampling vs. Matched Environmental Stations",
-    subtitle = "Blue = Fish Station | Red = Matched Environment Station",
-    x = "Longitude", y = "Latitude"
-  ) +
-  scale_color_manual(values = c("Fish Station" = "blue", "Matched Environment" = "red")) +
-  theme_minimal()
-
-
-# New code to prevent multiple matches but only closest point match
-# Add a unique ID to fish data before join
-fish_data <- fish_data %>%
-  filter(!is.na(Lat), !is.na(Long), !is.na(Date)) %>%
-  mutate(Fish_RowID = row_number())
-# Fuzzy join
-merged_data6 <- fuzzy_left_join(
-  fish_data,
-  daily_temp_salinity %>% filter(!is.na(Lat), !is.na(Long), !is.na(Date)),
-  by = c("Date", "Lat", "Long"),
-  match_fun = list(
-    function(x, y) abs(difftime(x, y, units = "days")) <= 21,
-    ~ abs(.x - .y) <= 0.1,
-    ~ abs(.x - .y) <= 0.1
-  )
-) %>%
-  filter(!is.na(Mean_Temperature_ºC)) %>%
-  mutate(
-    Date_Diff = abs(as.numeric(difftime(Date.x, Date.y, units = "days"))),
-    Spatial_Dist = geosphere::distHaversine(matrix(c(Long.x, Lat.x), ncol = 2),
-                                            matrix(c(Long.y, Lat.y), ncol = 2)),
-    Combined_Score = Date_Diff + Spatial_Dist / 1000  # days + km
-  ) %>%
-  group_by(Fish_RowID) %>%
-  slice_min(order_by = Combined_Score, with_ties = FALSE) %>%
-  ungroup()
-
-# Count the number of unique years per station
-year_count <- merged_data6 %>%
-  group_by(Fångstområde1) %>%
-  summarise(Unique_Years = n_distinct(Year))
-
-
 # Count the number of unique years per env station
 library(lubridate)
-daily_temp_salinity$Fiskedatum1 <- as.Date(daily_temp_salinity$Date, format = "%Y-%m-%d")  # Adjust the format if necessary
+daily_temp_salinity$Date <- as.Date(daily_temp_salinity$Date)  # Adjust the format if necessary
 daily_temp_salinity$Year <- format(daily_temp_salinity$Date, "%Y")  # Extract year from Date column
 year_count_env <- daily_temp_salinity %>%
   group_by(Station) %>%
   summarise(Unique_Years = n_distinct(Year))
 
 
-# *SKIP* 4 Map the locations of the stations ----
-
-# Install and load packages
-# install.packages("sf")
-# install.packages("rnaturalearth")
-# install.packages("rnaturaleartdata")
-library(sf)
-library(rnaturalearth)
-library(rnaturalearthdata)
-
-# Convert to spatial data
-stations_sf <- st_as_sf(station_cleaned_data, coords = c("Long", "Lat"), crs = 4326)
-
-# Get base map
-sweden_map <- ne_countries(scale = "medium", country = c("Sweden", "Finland"), returnclass = "sf")
-
-# Plot the map
-X11()
+# Make new map with longterm data env stations
+# Only keep environmental stations with 20+ years of data
+selected_env_stations <- all_stations_sf %>%
+  filter(Source == "Environmental" & Station %in% c("RA1", "RA2", "A13", "A5", "B3", "B7", "GA1", "C3", "C14"))
+# Get all fish stations
+fish_stations <- all_stations_sf %>% filter(Source == "Fish")
+# Combine filtered environmental and all fish stations
+stations_to_plot <- bind_rows(selected_env_stations, fish_stations)
+#Plot env stations
+x11()
 ggplot() +
-  geom_sf(data = sweden_map, fill = "darkgrey", color = "lightblue") +  # Add Sweden base map
-  geom_point(data = station_cleaned_data, 
-             aes(x = Long, y = Lat, color = StationsNr1), 
-             size = 3) +  # Plot station points
-  geom_text(data = station_cleaned_data, 
-            aes(x = Long, y = Lat, label = StationsNr1), 
-            vjust = -1, hjust = 0.5, size = 3, color = "black") +  # Add station number labels
-  labs(title = "Fish Sampling Stations in the Gulf of Bothnia", 
-       x = "Longitude", y = "Latitude") +
+  geom_sf(data = sweden_map, fill = "gray95", color = "gray50") +
+  geom_sf(data = selected_env_stations, aes(color = Source), size = 3, alpha = 0.8) +
+  geom_sf_text(data = selected_env_stations, aes(label = Station), size = 3, check_overlap = TRUE) +  
+  labs(title = "Map of Station Locations",
+       subtitle = "Selected Environmental Stations",
+       x = "Longitude", y = "Latitude", color = "Station Type") +
+  scale_color_manual(values = c("Environmental" = "darkgreen", "Fish" = "blue")) +
+  theme_minimal()
+#Plot env and fish stations
+x11()
+ggplot() +
+  geom_sf(data = sweden_map, fill = "gray95", color = "gray50") +
+  geom_sf(data = stations_to_plot, aes(color = Source), size = 3, alpha = 0.8) +
+  geom_sf_text(data = stations_to_plot, aes(label = Station), size = 3, check_overlap = TRUE) +  
+  labs(title = "Map of Station Locations",
+       subtitle = "Selected Environmental Stations & All Fish Stations",
+       x = "Longitude", y = "Latitude", color = "Station Type") +
+  scale_color_manual(values = c("Environmental" = "darkgreen", "Fish" = "blue")) +
+  theme_minimal()
+#Plot matching env and fish stations
+matching_env_stations <- all_stations_sf %>%   # Only keep environmental stations close to fish stations
+  filter(Source == "Environmental" & Station %in% c("RA1", "RA2", "A13", "B3", "B7", "GA1", "C14"))
+matching_stations <- bind_rows(matching_env_stations, fish_stations) #Combine stations
+#Plot
+x11()
+ggplot() +
+  geom_sf(data = sweden_map, fill = "gray95", color = "gray50") +
+  geom_sf(data = matching_stations, aes(color = Source), size = 3, alpha = 0.8) +
+  geom_sf_text(data = matching_stations, aes(label = Station), size = 3, check_overlap = TRUE) +  
+  labs(title = "Map of Station Locations",
+       subtitle = "Matching Environmental & Fish Stations",
+       x = "Longitude", y = "Latitude", color = "Station Type") +
+  scale_color_manual(values = c("Environmental" = "darkgreen", "Fish" = "blue")) +
   theme_minimal()
 
-# 9 locations visible in map, even though there are only 6 stations.
-# Find unique coordinates per station
-unique_coords <- station_cleaned_data %>%
-  group_by(StationsNr1) %>%
-  distinct(Lat, Long) %>%
-  summarize(n_coords = n(), .groups = "drop")
-print(unique_coords)
+# Pair stations
+station_pairs <- tibble::tibble(
+  fish_station = c("1", "1", "2", "3", "3", "4", "4", "5", "6"),
+  env_station = c("RA1", "RA2", "A13", "B3", "B7", "B3", "B7", "GA1", "C14")
+)
+# Calculate distances between stations
+station_pairs_geom <- station_pairs %>%
+  left_join(all_stations_sf %>% filter(Source == "Fish") %>% 
+              select(fish_station = Station, Fångstområde1, fish_geom = geometry),
+            by = "fish_station") %>%
+  left_join(all_stations_sf %>% filter(Source == "Environmental") %>% 
+              select(env_station = Station, env_geom = geometry),
+            by = "env_station") %>%
+  mutate(
+    distance_km = as.numeric(st_distance(fish_geom, env_geom, by_element = TRUE)) / 1000
+  )
 
-# Plot locations per station on map
-# Filter only Station 11
-station_11_data <- station_cleaned_data %>%
-  filter(StationsNr1 == 11)
+# Check/set the working directory
+setwd(here("Data"))
+# Save merged dataframe
+write.csv(station_pairs_geom, "Preliminary_results/station_pairs_distances.csv", row.names = FALSE)
 
-X11()
-ggplot() +
-  geom_sf(data = sweden_map, fill = "darkgrey", color = "lightblue") +  # Add Sweden base map
-  geom_point(data = station_11_data, 
-             aes(x = Long, y = Lat), 
-             color = "red", size = 3) +  # Plot Station 11 points in red
-  geom_text(data = station_11_data, 
-            aes(x = Long, y = Lat, label = StationsNr1), 
-            vjust = -1, hjust = 0.5, size = 3, color = "black") +  # Add station number labels
-  labs(title = "Sampling Locations for Station 11 in the Gulf of Bothnia", 
-       x = "Longitude", y = "Latitude") +
-  theme_minimal()
+# 4 Merge env and fish data ----
+library(dplyr)
+library(lubridate)
+library(fuzzyjoin)
 
-# Filter only Station 12
-station_12_data <- station_cleaned_data %>%
-  filter(StationsNr1 == 12)
-
-X11()
-ggplot() +
-  geom_sf(data = sweden_map, fill = "darkgrey", color = "lightblue") +  # Add Sweden base map
-  geom_point(data = station_12_data, 
-             aes(x = Long, y = Lat), 
-             color = "red", size = 3) +  # Plot Station 12 points in red
-  geom_text(data = station_12_data, 
-            aes(x = Long, y = Lat, label = StationsNr1), 
-            vjust = -1, hjust = 0.5, size = 3, color = "black") +  # Add station number labels
-  labs(title = "Sampling Locations for Station 12 in the Gulf of Bothnia", 
-       x = "Longitude", y = "Latitude") +
-  theme_minimal()
-
-# Stations have multiple different coordinates, so need to check that before continuing.
-
-
-# *SKIP* 5 Practice make dataset (without accurate data!!) ----
-
-# Convert Date columns to Date format (if not already)
-fish_data <- fish_data %>%
-  mutate(Date = as.Date(Date))
-
-daily_temp_salinity <- daily_temp_salinity %>%
-  mutate(Date = as.Date(Date))
-
-# Create Year-Month columns for both datasets
-fish_data <- fish_data %>%
-  mutate(Year_Month = paste(year(Date), sprintf("%02d", month(Date)), sep = "-"))
-
-daily_temp_salinity <- daily_temp_salinity %>%
-  mutate(Year_Month = paste(year(Date), sprintf("%02d", month(Date)), sep = "-"))
-
-# Match by Year-Month
-matched_data <- inner_join(fish_data, daily_temp_salinity, by = "Year_Month", relationship = "many-to-many")
-
-# Convert fish and environmental data to spatial points
-fish_sf <- st_as_sf(matched_data, coords = c("Long.x", "Lat.x"), crs = 4326)
-env_sf <- st_as_sf(matched_data, coords = c("Long.y", "Lat.y"), crs = 4326)
-
-# Perform a spatial join to match the closest points
-final_matched_data <- st_join(fish_sf, env_sf, join = st_nearest_feature)
-
-
-###############
-
-
-# Match by exact Date, allowing many-to-many
-matched_data <- inner_join(
-  fish_weight_threshold, 
-  daily_temp_salinity, 
-  by = "Date",                           # Match on exact date
-  relationship = "many-to-many"          # Allow many-to-many matches
+# Define station pairs
+paired_stations <- tibble::tibble(
+  Station = c("1", "2", "3", "4", "5", "6"),
+  Env_Station = c("RA1", "A13", "B7", "B7", "GA1", "C14")
 )
 
-# Convert fish and environmental data to spatial points
-fish_sf <- st_as_sf(matched_data, coords = c("Long.x", "Lat.x"), crs = 4326)
-env_sf <- st_as_sf(matched_data, coords = c("Long.y", "Lat.y"), crs = 4326)
+# Add station number to fish stations
+station_mapping <- fish_stations_sf %>%
+  st_drop_geometry() %>%
+  select(Fångstområde1, Station)
+fish_data_with_station <- fish_data %>%
+  left_join(station_mapping, by = "Fångstområde1")
 
-# Perform a spatial join to match the closest points
-final_matched_data <- st_join(fish_sf, env_sf, join = st_nearest_feature)
+# Add matching info to fish data
+fish_data_matched <- fish_data_with_station %>%
+  filter(!is.na(Station)) %>%
+  left_join(paired_stations, by = "Station")
 
-final_matched_data <- final_matched_data %>%
-  select(-ends_with(".y")) %>% 
-  rename_with(~ gsub("\\.x$", "", .))  # Remove '.x' suffix from fish data
+### Filter and prepare environmental data
+env_data_filtered <- daily_temp_salinity %>%
+  filter(!is.na(Station)) %>%
+  select(Station, Date, Lat, Long, Mean_Temperature_ºC, Mean_Salinity_psu) %>%
+  rename(
+    Env_Station = Station,
+    Date_env = Date,
+    Lat_env = Lat,
+    Long_env = Long,
+    Temperature = Mean_Temperature_ºC,
+    Salinity = Mean_Salinity_psu
+  )
 
-head(final_matched_data)
-# Remove excess columns
-final_matched_data <- final_matched_data %>% select(-X.y)
-str(final_matched_data)
-# Remove geometry
-final_matched_data <- st_drop_geometry(final_matched_data)
+# Join based on station match and date difference within 14 days
+merged_data <- fuzzy_left_join(
+  fish_data_matched,
+  env_data_filtered,
+  by = c("Env_Station" = "Env_Station", "Date" = "Date_env"),
+  match_fun = list(`==`, function(x, y) abs(difftime(x, y, units = "days")) <= 14)
+) %>%
+  mutate(Date_Diff = abs(difftime(Date, Date_env, units = "days"))) %>%
+  group_by(across(names(fish_data))) %>%  # Ensure each fish row gets best match
+  slice_min(Date_Diff, with_ties = FALSE) %>%
+  ungroup()
 
-# Save test dataframe
-write.csv(final_matched_data, "test_fish_env_merge.csv", row.names = FALSE)
+# Clean data
+merged_data_clean <- merged_data %>%
+  filter(!is.na(Temperature)) %>%  # Remove rows where no match was found
+  mutate(Date_Diff = round(as.numeric(difftime(Date, Date_env, units = "days")))) %>%  # Make sure Date_Diff is in full days
+  select(-Env_Station.y) %>%         # Remove duplicate columns
+  rename(Env_Station = Env_Station.x)
+
+# Check/set the working directory
+setwd(here("Data"))
+
+# Save merged dataframe
+write.csv(merged_data_clean, "fish_env_data.csv", row.names = FALSE)
 
 
+
+# Join based on station match and date difference within 30 days
+merged_data2 <- fuzzy_left_join(
+  fish_data_matched,
+  env_data_filtered,
+  by = c("Env_Station" = "Env_Station", "Date" = "Date_env"),
+  match_fun = list(`==`, function(x, y) abs(difftime(x, y, units = "days")) <= 30)
+) %>%
+  mutate(Date_Diff = abs(difftime(Date, Date_env, units = "days"))) %>%
+  group_by(across(names(fish_data))) %>%  # Ensure each fish row gets best match
+  slice_min(Date_Diff, with_ties = FALSE) %>%
+  ungroup()
+
+# Clean data
+merged_data_clean2 <- merged_data2 %>%
+  filter(!is.na(Temperature)) %>%  # Remove rows where no match was found
+  mutate(Date_Diff = round(as.numeric(difftime(Date, Date_env, units = "days")))) %>%  # Make sure Date_Diff is in full days
+  select(-Env_Station.y) %>%         # Remove duplicate columns
+  rename(Env_Station = Env_Station.x)
+
+# Check/set the working directory
+setwd(here("Data"))
+
+# Save merged dataframe
+write.csv(merged_data_clean2, "fish_env_data2.csv", row.names = FALSE)
 
 

@@ -65,13 +65,12 @@ ggplot(years_data, aes(x = Year, y = Fångstområde1)) +
   theme_minimal() +
   theme(strip.text = element_text(face = "bold"))
 
-
-
-# 1 Make first models -----
-library("gratia")
-
 #Change Fångstområde from character to factor
 fish_mean$Fångstområde1 <- as.factor(fish_mean$Fångstområde1)
+
+
+# 1 Model biomass -----
+library("gratia")
 
 # 1.1 Model total Perch biomass over time ----
 # GS smoother with same wiggliness
@@ -94,11 +93,11 @@ summary(model_biomass_time_gs)
 x11()
 draw(model_biomass_time_gs)
 # Group specific smoother of different wiggliness
-model_biomass_time_i <- gam(mean_biomass ~ s(Year, by=Fångstområde1, k=9, bs='fs')
+model_biomass_time_i <- gam(mean_biomass ~ s(Year, by=Fångstområde1, k=13, bs='fs')
                           # + s(mean_temperature, k=9,bs='tp') 
                           # + s(mean_salinity, k=9, bs='tp')
                           , data = subset(fish_mean, Artbestämning=="Abborre")
-                          , family = gaussian(),method = "REML")
+                          , family = Gamma(),method = "REML")
 summary(model_biomass_time_i)
 x11()
 draw(model_biomass_time_i)
@@ -230,7 +229,7 @@ AIC(model_biomass_time_gs, model_biomass_time_i, model_biomass_time_s)
 
 
 
-# 2 Analyze results ----
+# 1.6 Analyze results ----
 # Per station
 sm <- gratia::smooth_estimates(model_biomass_time_i)
 sm <- sm %>%
@@ -244,119 +243,204 @@ GAM_timeseries <- ggplot(aes(x=Year,y=.estimate,group = Fångstområde1,colour =
                   ymax = .upper_ci,
                   fill = Fångstområde1), alpha = 0.2)+
   facet_wrap(~Fångstområde1) +
-  geom_point(data = subset(fish_mean, Artbestämning == "Strömming"),     # Change Artbestämning to specific species used in model
+  geom_point(data = subset(fish_mean, Artbestämning == "Abborre"),     # Change Artbestämning to specific species used in model
              aes(x = Year, y = mean_biomass, colour = Fångstområde1),
-             inherit.aes = FALSE)
+             inherit.aes = FALSE) +
+  labs(title = "Time series of perch biomass across stations",              # Change species name so title is correct
+       x = "Year", y = "biomass")
   # + scale_y_continuous(limits = c(0, 4))  # <- Set min and max of y-axis if needed
 
 x11()
 GAM_timeseries
 
-# Global trend
 
 
 
 
+# 2 Model CPU (count) ----
 
-
-
-
-
-
-
+# 2.1 Model total Perch cpu over time ----
+# GS smoother with same wiggliness
+model_cpu_time_s <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs') 
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Abborre")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_s)
 x11()
-plot(fish_mean$mean_biomass ~fish_mean$Year)
-x11()
-gam.check(model_biomass_time)
-x11()
-plot(model_biomass_time, select = 1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Model total CPU over time
-model_perchcount_time <- gam(mean_cpu ~ s(Year, k=9, bs='tp') 
-                             # + s(mean_temperature, k=9,bs='tp')  
+draw(model_cpu_time_s)
+# Global term plus group specific smoother with same wiggliness
+model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
+                             + s(Year, k=9, bs='tp')
+                             # + s(mean_temperature, k=9,bs='tp') 
                              # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Abborre")
-                             , family = gaussian(),method = "REML")
+                             , family = nb(),method = "REML")
+summary(model_cpu_time_gs)
 x11()
-plot(aborre_total_mean$mean_count ~aborre_total_mean$Year)
+draw(model_cpu_time_gs)
+# Group specific smoother of different wiggliness
+model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Abborre")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_i)
 x11()
-gam.check(model_perchcount_time)
-x11()
-plot(model_perchcount_time, select = 1)
-summary(model_perchcount_time)
+draw(model_cpu_time_i)
+AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
 
 
-# Model total count over time
-model_perchcount_gav <- gam(mean_count ~ s(Year, k=9, bs='tp') 
-                             # + s(mean_temperature, k=9,bs='tp')  
+# 2.2 Model total three-spined stickleback cpu over time ----
+# GS smoother with same wiggliness
+model_cpu_time_s <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs') 
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Storspigg")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_s)
+x11()
+draw(model_cpu_time_s)
+# Global term plus group specific smoother with same wiggliness
+model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
+                             + s(Year, k=9, bs='tp')
+                             # + s(mean_temperature, k=9,bs='tp') 
                              # + s(mean_salinity, k=9, bs='tp')
-                             , data = station_gav, family = gaussian(),method = "REML")
+                             , data = subset(fish_mean, Artbestämning=="Storspigg")
+                             , family = nb(),method = "REML")
+summary(model_cpu_time_gs)
 x11()
-plot(station_gav$mean_count ~station_gav$Year)
+draw(model_biomass_time_gs)
+# Group specific smoother of different wiggliness
+model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Storspigg")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_i)
 x11()
-gam.check(model_perchcount_gav)
+draw(model_cpu_time_i)
+AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
+
+# 2.3 Model total common roach cpu over time ----
+# GS smoother with same wiggliness
+model_cpu_time_s <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs') 
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Mört")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_s)
 x11()
-plot(model_perchcount_gav, select = 1)
-summary(model_perchcount_gav)
-
-
-
-
-
-model2_perchweight_time <- gam(mean_biomass ~ s(Year, k=9, bs='tp') 
-                              # + s(mean_temperature, k=9,bs='tp')  
-                              # + s(mean_salinity, k=9, bs='tp')
-                              ,
-                              data = aborre_mean, family = gaussian(),method = "REML")
+draw(model_cpu_time_s)
+# Global term plus group specific smoother with same wiggliness
+model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
+                             + s(Year, k=9, bs='tp')
+                             # + s(mean_temperature, k=9,bs='tp') 
+                             # + s(mean_salinity, k=9, bs='tp')
+                             , data = subset(fish_mean, Artbestämning=="Mört")
+                             , family = nb(),method = "REML")
+summary(model_cpu_time_gs)
 x11()
-plot(model2_perchweight_time, select = 1)
+draw(model_cpu_time_gs)
+# Group specific smoother of different wiggliness
+model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Mört")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_i)
+x11()
+draw(model_cpu_time_i)
+AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
+
+# 2.4 Model total ruffe cpu over time ----
+# GS smoother with same wiggliness
+model_cpu_time_s <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs') 
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Gärs")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_s)
+x11()
+draw(model_cpu_time_s)
+# Global term plus group specific smoother with same wiggliness
+model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
+                             + s(Year, k=9, bs='tp')
+                             # + s(mean_temperature, k=9,bs='tp') 
+                             # + s(mean_salinity, k=9, bs='tp')
+                             , data = subset(fish_mean, Artbestämning=="Gärs")
+                             , family = nb(),method = "REML")
+summary(model_cpu_time_gs)
+x11()
+draw(model_cpu_time_gs)
+# Group specific smoother of different wiggliness
+model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Gärs")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_i)
+x11()
+draw(model_cpu_time_i)
+AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
+
+# 2.5 Model total herring cpu over time ----
+# GS smoother with same wiggliness
+model_cpu_time_s <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs') 
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Strömming")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_s)
+x11()
+draw(model_cpu_time_s)
+# Global term plus group specific smoother with same wiggliness
+model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
+                             + s(Year, k=9, bs='tp')
+                             # + s(mean_temperature, k=9,bs='tp') 
+                             # + s(mean_salinity, k=9, bs='tp')
+                             , data = subset(fish_mean, Artbestämning=="Strömming")
+                             , family = nb(),method = "REML")
+summary(model_cpu_time_gs)
+x11()
+draw(model_cpu_time_gs)
+# Group specific smoother of different wiggliness
+model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
+                            # + s(mean_temperature, k=9,bs='tp') 
+                            # + s(mean_salinity, k=9, bs='tp')
+                            , data = subset(fish_mean, Artbestämning=="Strömming")
+                            , family = nb(),method = "REML")
+summary(model_cpu_time_i)
+x11()
+draw(model_cpu_time_i)
+AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
 
 
 
+# 2.6 Analyze results ----
+# Per station
+sm2 <- gratia::smooth_estimates(model_cpu_time_s)             # Change model type if wanted
+sm2 <- sm2 %>%
+  add_constant(coef(model_cpu_time_s)["(Intercept)"]) %>%    # Change model type if wanted
+  add_confint(coverage=0.95) %>%
+  transform_fun(inv_link(model_cpu_time_s))                  # Change model type if wanted
 
-# 3 Make new models with env data ----
-model_perchcount <- gam(Antal1 ~ s(Mean_Temperature_ºC, k=9,bs='tp') + 
-                          s(Mean_Salinity_psu, k=9, bs='tp'),
-                        data = fishdata_abborre, family = poisson(),method = "REML")
-
-
-model_perchweight <- gam(Beräknad_vikt1+0.1 ~ s(Mean_Temperature_ºC, k=9,bs='tp') + 
-                           s(Mean_Salinity_psu, k=9, bs='tp'),
-                         data = fishdata_abborre, family = gaussian(),method = "REML")
-
-gam.check(model_perchcount)
-gam.check(model_perchweight)
-Gamma()
-summary(model_perch)
-# 
+GAM_timeseries_cpu <- ggplot(aes(x=Year,y=.estimate,group = Fångstområde1,colour = Fångstområde1),data=sm2)+
+  geom_line()+
+  geom_ribbon(aes(ymin = .lower_ci,
+                  ymax = .upper_ci,
+                  fill = Fångstområde1), alpha = 0.2)+
+  facet_wrap(~Fångstområde1) +
+  geom_point(data = subset(fish_mean, Artbestämning == "Mört"),     # Change Artbestämning to specific species used in model
+             aes(x = Year, y = mean_cpu, colour = Fångstområde1),
+             inherit.aes = FALSE) +
+  labs(title = "Time series of roach CPU across stations",              # Change species name so title is correct
+    x = "Year", y = "CPU")
+# + scale_y_continuous(limits = c(0, 4))  # <- Set min and max of y-axis if needed
 
 x11()
-plot(fishdata_abborre$Antal1 ~fishdata_abborre$Mean_Salinity_psu)
+GAM_timeseries_cpu
+
+
 
 

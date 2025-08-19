@@ -149,6 +149,32 @@ ggplot(df, aes(x = Artbestämning, y = Antal1)) +
   geom_bar(stat = "identity", fill = "lightblue") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   labs(title = "Total Number of Fish Caught per Species", x = "Species", y = "Total Count")
+
+# Make pie chart of 5 most abundant species
+species_summary <- df %>%
+  group_by(Artbestämning) %>%
+  summarise(total_count = sum(Antal1, na.rm = TRUE)) %>%
+  arrange(desc(total_count))
+top5 <- species_summary %>% slice_head(n = 5)
+other_count <- sum(species_summary$total_count) - sum(top5$total_count)
+pie_data <- bind_rows(
+  top5,
+  tibble(Artbestämning = "Other", total_count = other_count)
+) %>%
+  mutate(
+    pct = total_count / sum(total_count) * 100,
+    label = paste0(Artbestämning, "\n", round(pct, 1), "%")
+  )
+# Plot pie chart of species
+x11()
+ggplot(pie_data, aes(x = "", y = total_count, fill = Artbestämning)) +
+  geom_col(color = "white", width = 1) +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = label), position = position_stack(vjust = 0.5)) +
+  labs(title = "Top 5 Fish Species and Other (by Total Count)") +
+  theme_void() +
+  theme(legend.position = "none")
+
 # Fish count over time
 df_time <- df %>%
   group_by(Fiskedatum1 = as.Date(Fiskedatum1)) %>%

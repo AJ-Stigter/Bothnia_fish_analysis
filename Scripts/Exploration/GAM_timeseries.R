@@ -26,8 +26,6 @@ fish_mean <- common_fish %>%
   summarise(
     mean_biomass = mean(Beräknad_vikt1, na.rm = TRUE),
     mean_cpu = mean(Antal_per_anstr1, na.rm = TRUE),
-    #mean_temperature = mean(Mean_Temperature_ºC, na.rm = TRUE),
-    #mean_salinity = mean(Mean_Salinity_psu, na.rm = TRUE)
   )
 
 # Check data distribution
@@ -108,8 +106,6 @@ AIC(model_biomass_time_gs, model_biomass_time_i, model_biomass_time_s)
 # 1.2 Model total three-spined stickleback biomass over time ----
 # GS smoother with same wiggliness
 model_biomass_time_s <- gam(mean_biomass ~ s(Year, k=9, bs='fs') 
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Storspigg")
                             , family = gaussian(),method = "REML")
 summary(model_biomass_time_s)
@@ -130,8 +126,6 @@ draw(model_biomass_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_biomass_time_gs <- gam(mean_biomass ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Storspigg")
                              , family = gaussian(),method = "REML")
 summary(model_biomass_time_gs)
@@ -139,8 +133,6 @@ x11()
 draw(model_biomass_time_gs)
 # Group specific smoother of different wiggliness
 model_biomass_time_i <- gam(mean_biomass ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Storspigg")
                             , family = gaussian(),method = "REML")
 summary(model_biomass_time_i)
@@ -151,8 +143,6 @@ AIC(model_biomass_time_gs, model_biomass_time_i, model_biomass_time_s)
 # 1.3 Model total common roach biomass over time ----
 # GS smoother with same wiggliness
 model_biomass_time_s <- gam(mean_biomass ~ s(Year, k=9, bs='fs') 
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Mört")
                             , family = gaussian(),method = "REML")
 summary(model_biomass_time_s)
@@ -161,8 +151,6 @@ draw(model_biomass_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_biomass_time_gs <- gam(mean_biomass ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Mört")
                              , family = gaussian(),method = "REML")
 summary(model_biomass_time_gs)
@@ -170,8 +158,6 @@ x11()
 draw(model_biomass_time_gs)
 # Group specific smoother of different wiggliness
 model_biomass_time_i <- gam(mean_biomass ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Mört")
                             , family = gaussian(),method = "REML")
 summary(model_biomass_time_i)
@@ -182,8 +168,6 @@ AIC(model_biomass_time_gs, model_biomass_time_i, model_biomass_time_s)
 # 1.4 Model total ruffe biomass over time ----
 # GS smoother with same wiggliness
 model_biomass_time_s <- gam(mean_biomass ~ s(Year, k=9, bs='fs') 
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Gärs")
                             , family = gaussian(),method = "REML")
 summary(model_biomass_time_s)
@@ -192,8 +176,6 @@ draw(model_biomass_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_biomass_time_gs <- gam(mean_biomass ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Gärs")
                              , family = gaussian(),method = "REML")
 summary(model_biomass_time_gs)
@@ -201,8 +183,6 @@ x11()
 draw(model_biomass_time_gs)
 # Group specific smoother of different wiggliness
 model_biomass_time_i <- gam(mean_biomass ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Gärs")
                             , family = gaussian(),method = "REML")
 summary(model_biomass_time_i)
@@ -221,8 +201,6 @@ draw(model_biomass_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_biomass_time_gs <- gam(mean_biomass ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Strömming")
                              , family = gaussian(),method = "REML")
 summary(model_biomass_time_gs)
@@ -230,15 +208,15 @@ x11()
 draw(model_biomass_time_gs)
 # Group specific smoother of different wiggliness
 model_biomass_time_i <- gam(mean_biomass ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Strömming")
                             , family = gaussian(),method = "REML")
 summary(model_biomass_time_i)
 x11()
 draw(model_biomass_time_i)
 AIC(model_biomass_time_gs, model_biomass_time_i, model_biomass_time_s)
-####
+
+
+#### Check linear model
 bwah = subset(fish_mean, Artbestämning=="Strömming")
 data_sum <- bwah %>% group_by(Year) %>% summarize(fish_mean = mean(mean_biomass,na.rm=T),fish_sum = sum(mean_biomass,na.rm=T))
 plot(data_sum$Year,data_sum$fish_sum)  
@@ -249,6 +227,7 @@ data_sum$fish_mean = data_sum$fish_mean - mean(data_sum$fish_mean)
 
 summary(lm(data_sum$fish_sum[-c(14,19)] ~ data_sum$Year[-c(14,19)]))
 ####
+
 # 1.6 Analyze results ----
 # Per station
 sm <- gratia::smooth_estimates(model_biomass_time_gs)               # Change model if wanted
@@ -282,8 +261,6 @@ GAM_timeseries
 # 2.1 Model total Perch cpue over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(mean_cpu ~ s(Year, k=9, bs='fs') 
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Abborre")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_s)
@@ -292,8 +269,6 @@ draw(model_cpu_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Abborre")
                              , family = nb(),method = "REML")
 summary(model_cpu_time_gs)
@@ -301,8 +276,6 @@ x11()
 draw(model_cpu_time_gs)
 # Group specific smoother of different wiggliness
 model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Abborre")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_i)
@@ -314,8 +287,6 @@ AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
 # 2.2 Model total three-spined stickleback cpu over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(mean_cpu ~ s(Year, Fångstområde1, k=9, bs='fs') 
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Storspigg")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_s)
@@ -324,8 +295,6 @@ draw(model_cpu_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Storspigg")
                              , family = nb(),method = "REML")
 summary(model_cpu_time_gs)
@@ -333,8 +302,6 @@ x11()
 draw(model_biomass_time_gs)
 # Group specific smoother of different wiggliness
 model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Storspigg")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_i)
@@ -345,8 +312,6 @@ AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
 # 2.3 Model total common roach cpu over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(mean_cpu ~ s(Year, k=9, bs='fs') 
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Mört")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_s)
@@ -355,8 +320,6 @@ draw(model_cpu_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Mört")
                              , family = nb(),method = "REML")
 summary(model_cpu_time_gs)
@@ -364,8 +327,6 @@ x11()
 draw(model_cpu_time_gs)
 # Group specific smoother of different wiggliness
 model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Mört")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_i)
@@ -376,8 +337,6 @@ AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
 # 2.4 Model total ruffe cpu over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(mean_cpu ~ s(Year, k=9, bs='fs') 
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Gärs")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_s)
@@ -386,8 +345,6 @@ draw(model_cpu_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Gärs")
                              , family = nb(),method = "REML")
 summary(model_cpu_time_gs)
@@ -395,8 +352,6 @@ x11()
 draw(model_cpu_time_gs)
 # Group specific smoother of different wiggliness
 model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Gärs")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_i)
@@ -407,8 +362,6 @@ AIC(model_cpu_time_gs, model_cpu_time_i, model_cpu_time_s)
 # 2.5 Model total herring cpue over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(mean_cpu ~ s(Year, Fångstområde1, k=9, bs='fs') 
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Strömming")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_s)
@@ -417,8 +370,6 @@ draw(model_cpu_time_s)
 # Global term plus group specific smoother with same wiggliness
 model_cpu_time_gs <- gam(mean_cpu ~ s(Year,Fångstområde1, k=9, bs='fs')
                              + s(Year, k=9, bs='tp')
-                             # + s(mean_temperature, k=9,bs='tp') 
-                             # + s(mean_salinity, k=9, bs='tp')
                              , data = subset(fish_mean, Artbestämning=="Strömming")
                              , family = nb(),method = "REML")
 summary(model_cpu_time_gs)
@@ -426,8 +377,6 @@ x11()
 draw(model_cpu_time_gs)
 # Group specific smoother of different wiggliness
 model_cpu_time_i <- gam(mean_cpu ~ s(Year, by=Fångstområde1, k=9, bs='fs')
-                            # + s(mean_temperature, k=9,bs='tp') 
-                            # + s(mean_salinity, k=9, bs='tp')
                             , data = subset(fish_mean, Artbestämning=="Strömming")
                             , family = nb(),method = "REML")
 summary(model_cpu_time_i)
@@ -471,8 +420,6 @@ fish_mean$biomass_per_cpu <- fish_mean$mean_biomass / fish_mean$mean_cpu
 # 3.1 Model total Perch biomass per cpue over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(biomass_per_cpu ~ s(Year, k=9, bs='fs') 
-                        # + s(mean_temperature, k=9,bs='tp') 
-                        # + s(mean_salinity, k=9, bs='tp')
                         , data = subset(fish_mean, Artbestämning=="Abborre")
                         , family = gaussian(),method = "REML")
 summary(model_cpu_time_s)
@@ -482,8 +429,6 @@ draw(model_cpu_time_s)
 # 3.2 Model total three-spined stickleback biomass per cpu over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(biomass_per_cpu ~ s(Year,Fångstområde1, k=9, bs='fs') 
-                        # + s(mean_temperature, k=9,bs='tp') 
-                        # + s(mean_salinity, k=9, bs='tp')
                         , data = subset(fish_mean, Artbestämning=="Storspigg")
                         , family = nb(),method = "REML")
 summary(model_cpu_time_s)
@@ -493,8 +438,6 @@ draw(model_cpu_time_s)
 # 3.3 Model total common roach biomass per cpu over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(biomass_per_cpu ~ s(Year,Fångstområde1, k=9, bs='fs') 
-                        # + s(mean_temperature, k=9,bs='tp') 
-                        # + s(mean_salinity, k=9, bs='tp')
                         , data = subset(fish_mean, Artbestämning=="Mört")
                         , family = nb(),method = "REML")
 summary(model_cpu_time_s)
@@ -504,8 +447,6 @@ draw(model_cpu_time_s)
 # 3.4 Model total ruffe biomass per cpu over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(biomass_per_cpu ~ s(Year, k=9, bs='fs') 
-                        # + s(mean_temperature, k=9,bs='tp') 
-                        # + s(mean_salinity, k=9, bs='tp')
                         , data = subset(fish_mean, Artbestämning=="Gärs")
                         , family = nb(),method = "REML")
 summary(model_cpu_time_s)
@@ -515,8 +456,6 @@ draw(model_cpu_time_s)
 # 3.5 Model total herring biomass per cpu over time ----
 # GS smoother with same wiggliness
 model_cpu_time_s <- gam(biomass_per_cpu ~ s(Year, k=9, bs='fs') 
-                        # + s(mean_temperature, k=9,bs='tp') 
-                        # + s(mean_salinity, k=9, bs='tp')
                         , data = subset(fish_mean, Artbestämning=="Strömming")
                         , family = nb(),method = "REML")
 summary(model_cpu_time_s)
